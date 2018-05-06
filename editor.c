@@ -3,15 +3,23 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <errno.h>
 
 struct termios originalTermi;
 
+void die(const char *s) {
+  perror(s);
+  exit(1);
+}
+
 void disableRawMode() {
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &originalTermi);
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &originalTermi) == -1)
+        die("tcsetattr");
 }
 
 void enableRawMode() {
-    tcgetattr(STDIN_FILENO, &originalTermi);
+    if (tcgetattr(STDIN_FILENO, &originalTermi) == -1) 
+        die("tcgetattr");
     atexit(disableRawMode);
 
     struct termios raw = originalTermi;
@@ -22,7 +30,8 @@ void enableRawMode() {
     raw.c_cc[VMIN] = 0;
     raw.c_cc[VTIME] = 1;
 
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+  if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) 
+    die("tcsetattr");
 }
 
 int main() {
@@ -30,7 +39,8 @@ int main() {
 
     while (1) {
         char ch = '\0';
-        read(STDIN_FILENO, &ch, 1);
+        if (read(STDIN_FILENO, &ch, 1) == -1 && errno != EAGAIN) 
+            die("read");
         if (iscntrl(ch)) {
             printf("%d\r\n", ch);
         } else {
