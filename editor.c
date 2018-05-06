@@ -19,6 +19,8 @@ void enableRawMode() {
     raw.c_oflag = raw.c_oflag & (~OPOST);
     raw.c_cflag = raw.c_cflag | (CS8);
     raw.c_lflag = raw.c_lflag & (~(ECHO | ICANON | IEXTEN | ISIG));
+    raw.c_cc[VMIN] = 0;
+    raw.c_cc[VTIME] = 1;
 
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
@@ -26,13 +28,16 @@ void enableRawMode() {
 int main() {
     enableRawMode();
 
-    char ch;
-    while (read(STDIN_FILENO, &ch, 1) == 1 && !(ch == 'q' || ch == 'Q')) {
+    while (1) {
+        char ch = '\0';
+        read(STDIN_FILENO, &ch, 1);
         if (iscntrl(ch)) {
             printf("%d\r\n", ch);
         } else {
             printf("%d ('%c')\r\n", ch, ch);
         }
+
+        if (ch == 'q') break;
     }
     return 0;
 }
