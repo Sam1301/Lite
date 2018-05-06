@@ -1,3 +1,5 @@
+/*** includes ***/
+
 #include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
@@ -5,7 +7,15 @@
 #include <ctype.h>
 #include <errno.h>
 
+/*** defines ***/
+
+#define CTRL_KEY(k) ((k) & 0x1f)
+
+/*** data ***/
+
 struct termios originalTermi;
+
+/*** terminal ***/
 
 void die(const char *s) {
   perror(s);
@@ -34,6 +44,8 @@ void enableRawMode() {
     die("tcsetattr");
 }
 
+/*** init ***/
+
 int main() {
     enableRawMode();
 
@@ -47,7 +59,8 @@ int main() {
             printf("%d ('%c')\r\n", ch, ch);
         }
 
-        if (ch == 'q') break;
+        // exit on CTrl+Q
+        if (ch == CTRL_KEY('q')) break;
     }
     return 0;
 }
