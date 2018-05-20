@@ -52,19 +52,6 @@ void enableRawMode() {
     die("tcsetattr");
 }
 
-int getWindowSize(int * row, int * col) {
-
-    struct winsize ws;
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
-        return -1;
-    } else {
-        *row = ws.ws_row;
-        *col = ws.ws_col;
-    }
-
-    return 0;
-}
-
 char editorReadKey() {
     int nread;
     char ch;
@@ -75,6 +62,38 @@ char editorReadKey() {
     }
 
     return ch;
+}
+
+int getCursorPosition(int *rows, int *cols) {
+    if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
+    
+    char buffer[32];
+    unsigned int i = 0;
+    while (i < sizeof(buffer)) {
+        if (read(STDIN_FILENO, &buffer[i], 1) != 1) break;
+
+        if (buffer[i] == 'R') break;
+        i++;
+    }
+    buffer[i] = '\0';
+    if (buffer[0] != '\x1b' || buffer[1] != '[') return -1;
+    if (sscanf(&buffer[2], "%d;%d", rows, cols) != 2) return -1;
+
+    return 0;
+}
+
+int getWindowSize(int * row, int * col) {
+
+    struct winsize ws;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+        if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
+        return getCursorPosition(row, col);
+    } else {
+        *row = ws.ws_row;
+        *col = ws.ws_col;
+    }
+
+    return 0;
 }
 
 /*** output ***/
