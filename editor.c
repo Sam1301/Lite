@@ -11,6 +11,9 @@
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
+/*** prototypes ***/
+void editorRefreshTerminal();
+
 /*** data ***/
 
 struct termios originalTermi;
@@ -18,8 +21,9 @@ struct termios originalTermi;
 /*** terminal ***/
 
 void die(const char *s) {
-  perror(s);
-  exit(1);
+    editorRefreshTerminal();
+    perror(s);
+    exit(1);
 }
 
 void disableRawMode() {
@@ -69,6 +73,7 @@ void editorProcessKey() {
     char c = editorReadKey();
     switch (c) {
         case CTRL_KEY('q') :         // exit on CTrl+Q
+            editorRefreshTerminal();
             exit(0);
             break;
     }
