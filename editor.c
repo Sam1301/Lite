@@ -44,23 +44,36 @@ void enableRawMode() {
     die("tcsetattr");
 }
 
+char editorReadKey() {
+    int nread;
+    char ch;
+
+    while ((nread = read(STDIN_FILENO, &ch, 1)) != 1) {
+        if (nread == -1 && errno != EAGAIN) 
+            die("read");
+    }
+
+    return ch;
+}
+
+/*** input ***/
+
+void editorProcessKey() {
+    char c = editorReadKey();
+    switch (c) {
+        case CTRL_KEY('q') :         // exit on CTrl+Q
+            exit(0);
+            break;
+    }
+}
+
 /*** init ***/
 
 int main() {
     enableRawMode();
 
     while (1) {
-        char ch = '\0';
-        if (read(STDIN_FILENO, &ch, 1) == -1 && errno != EAGAIN) 
-            die("read");
-        if (iscntrl(ch)) {
-            printf("%d\r\n", ch);
-        } else {
-            printf("%d ('%c')\r\n", ch, ch);
-        }
-
-        // exit on CTrl+Q
-        if (ch == CTRL_KEY('q')) break;
+        editorProcessKey();
     }
     return 0;
 }
