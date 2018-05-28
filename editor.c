@@ -36,6 +36,8 @@ enum editorKey {
 typedef struct editorrow {
     int length;
     char *text;
+    int rsize;
+    char *render;
 } editorrow;
 
 struct editorConfig {
@@ -192,6 +194,33 @@ int getWindowSize(int * row, int * col) {
 
 /*** row operations ***/
 
+void editorUpdateRow(editorrow * row) {
+    int tabs = 0;
+    for (int i = 0 ; i < row->length ; i++) {
+        if (row->text[i] == '\t') {
+            tabs++;
+        }
+    }
+
+    free(row->render);
+    row->render = malloc(row->length + tabs * 7 + 1); // 1 char for tabs already counted in row.length
+    
+    int idx = 0;  
+    for (int i = 0 ; i < row->length ; i++) {
+        if (row->text[i] == '\t') {
+            row->render[idx++] = ' ';
+            while (idx % 8 != 0) {
+                row->render[idx++] = ' ';
+            }
+        } else {
+            row->render[idx++] = row->text[i];
+        }
+    }
+
+    row->render[idx] = '\0';
+    row->rsize = idx;
+}
+
 void editorAppendRow(char *s, size_t len) {
     E.erow = realloc(E.erow, sizeof(editorrow) * (E.numrows + 1));
 
@@ -199,6 +228,11 @@ void editorAppendRow(char *s, size_t len) {
     E.erow[pos].length = len; // excluding '\0' at the end of string
     E.erow[pos].text = malloc(len + 1);
     memcpy(E.erow[pos].text, s, len+1);
+    
+    E.erow[pos].render = NULL;
+    E.erow[pos].rsize = 0;
+    editorUpdateRow(&E.erow[pos]);
+
     E.numrows++;
 }
 
@@ -252,7 +286,7 @@ void editorDrawRows(struct AppendBuffer* ab) {
                 abAppend(ab, "~", 1);
             }  
         } else {
-            int len = E.erow[fileRow].length - E.colOff;
+            int len = E.erow[fileRow].rsize - E.colOff;
 
             if (len < 0) {
                 len = 0; // when user goes past the current line
@@ -260,7 +294,7 @@ void editorDrawRows(struct AppendBuffer* ab) {
             if (len > E.screencols) {
                 len = E.screencols;
             }
-            abAppend(ab, &E.erow[fileRow].text[E.colOff], len);
+            abAppend(ab, &E.erow[fileRow].render[E.colOff], len);
         }
         
         abAppend(ab, "\x1b[K", 3); // clear rest of current line
