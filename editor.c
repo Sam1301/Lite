@@ -20,6 +20,8 @@ struct editorConfig {
     struct termios originalTermi;
     int screenrows;
     int screencols;
+    int cursorX;
+    int cursorY;
 } E;
 
 /*** struct append buffer ***/
@@ -160,7 +162,10 @@ void editorRefreshTerminal() {
 
     editorDrawRows(&ab);
 
-    abAppend(&ab, "\x1b[H", 3);
+    char buf[32];
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cursorY + 1, E.cursorX + 1); // cursorX and cursorY are 0 indexed
+    abAppend(&ab, buf, strlen(buf));
+
     abAppend(&ab, "\x1b[?25h", 6); // show cursor
 
     write(STDOUT_FILENO, ab.buffer, ab.length);
@@ -168,6 +173,23 @@ void editorRefreshTerminal() {
 }
 
 /*** input ***/
+
+void editorMoveCursor(char c) {
+    switch(c) {
+        case 'a':
+            E.cursorX--;
+            break;
+        case 's':
+            E.cursorY++;
+            break;
+        case 'd':
+            E.cursorX++;
+            break;
+        case 'w':
+            E.cursorY--;
+            break;
+    }
+}
 
 void editorProcessKey() {
     char c = editorReadKey();
@@ -177,12 +199,21 @@ void editorProcessKey() {
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
             break;
+        case 'a':
+        case 's':
+        case 'd':
+        case 'w':
+            editorMoveCursor(c);
+            break;
     }
 }
 
 /*** init ***/
 
 void initEditor() {
+    E.cursorX = 0;
+    E.cursorY = 0;
+
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) {
         die("getWindowSize");
     }
