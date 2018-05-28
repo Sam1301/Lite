@@ -20,7 +20,9 @@ enum editorKey {
     ARROW_UP,
     ARROW_DOWN,
     PAGE_UP,
-    PAGE_DOWN
+    PAGE_DOWN,
+    HOME_KEY,
+    END_KEY
 };
 
 /*** data ***/
@@ -115,6 +117,10 @@ int editorReadKey() {
                     switch (seq[1]) {
                         case '5': return PAGE_UP;
                         case '6': return PAGE_DOWN;
+                        case '1': return HOME_KEY;
+                        case '7': return HOME_KEY;
+                        case '4': return END_KEY;
+                        case '8': return END_KEY;
                     }
                 }       
             } else {
@@ -123,7 +129,14 @@ int editorReadKey() {
                     case 'B': return ARROW_DOWN;
                     case 'C': return ARROW_RIGHT;
                     case 'D': return ARROW_LEFT;
+                    case 'H': return HOME_KEY;
+                    case 'F': return END_KEY;
                 }
+            }
+        } else if (seq[0] == 'O') {
+            switch (seq[1]) {
+                case 'H': return HOME_KEY;
+                case 'F': return END_KEY;
             }
         }
 
@@ -264,6 +277,13 @@ void editorProcessKey() {
                     editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
                 }
             }
+            break;
+        case HOME_KEY:
+            E.cursorX = 0;
+            break;
+        case END_KEY:
+            E.cursorX = E.screencols - 1;
+            break;
     }
 }
 
