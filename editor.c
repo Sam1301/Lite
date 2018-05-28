@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <strings.h>
 
 /*** defines ***/
 
@@ -19,6 +20,29 @@ struct editorConfig {
     int screenrows;
     int screencols;
 } E;
+
+/*** struct append buffer ***/
+#define APPEND_BUFFER_INIT {NULL, 0}
+
+struct AppendBuffer {
+    char *buffer;
+    int length;
+};
+
+void abAppend(struct AppendBuffer* ab, char* s, int len) {
+    char* new = realloc(ab->buffer, ab->length + len);
+
+    if (new == NULL) {
+        return ;
+    }
+    memcpy(&new[ab->length], s, len);
+    ab->buffer = new;
+    ab->length += len;
+}
+
+void abFree(struct AppendBuffer *ab) {
+    free(ab->buffer);
+}
 
 /*** terminal ***/
 
@@ -98,21 +122,25 @@ int getWindowSize(int * row, int * col) {
 
 /*** output ***/
 
-void editorDrawRows() {
+void editorDrawRows(struct AppendBuffer* ab) {
     for (int i = 0 ; i < E.screenrows ; i++) {
-        write(STDOUT_FILENO, "~", 1);
+        abAppend(ab, "~", 1);
         if (i < E.screenrows - 1) {
-            write(STDOUT_FILENO, "\r\n", 2);
+            abAppend(ab, "\r\n", 2);
         }
     } 
 }
 
 void editorRefreshTerminal() {
-    write(STDOUT_FILENO, "\x1b[2J", 4);
-    write(STDOUT_FILENO, "\x1b[H", 3);
-    
-    editorDrawRows();
-    write(STDOUT_FILENO, "\x1b[H", 3); // bring cursor back up
+    struct AppendBuffer ab = APPEND_BUFFER_INIT;
+
+    abAppend(&ab, "\x1b[2J", 4); // clear entire screen
+    abAppend(&ab, "\x1b[H", 3); // bring cursor back up
+
+    editorDrawRows(&ab);
+    abAppend(&ab, "\x1b[H", 3);
+    write(STDOUT_FILENO, ab.buffer, ab.length);
+    abFree(&ab);
 }
 
 /*** input ***/
