@@ -330,6 +330,9 @@ void editorMoveCursor(int c) {
         case ARROW_RIGHT:
             if (erow && E.cursorX < erow->length) { // allow scroll till one char past end of line
                 E.cursorX++;
+            } else if (erow && E.cursorX == erow->length) {
+                E.cursorY++;
+                E.cursorX = 0;
             }
             break;
         case ARROW_UP:
