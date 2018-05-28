@@ -44,7 +44,7 @@ struct editorConfig {
     int screencols;
     int cursorX;
     int cursorY;
-    editorrow erow;
+    editorrow* erow;
     int numrows;
 } E;
 
@@ -188,6 +188,18 @@ int getWindowSize(int * row, int * col) {
     return 0;
 }
 
+/*** row operations ***/
+
+void editorAppendRow(char *s, size_t len) {
+    E.erow = realloc(E.erow, sizeof(editorrow) * (E.numrows + 1));
+
+    int pos = E.numrows;
+    E.erow[pos].length = len; // excluding '\0' at the end of string
+    E.erow[pos].text = malloc(len + 1);
+    memcpy(E.erow[pos].text, s, len+1);
+    E.numrows++;
+}
+
 /*** file I/O ***/
 
 void editorOpen(char * file) {
@@ -199,16 +211,13 @@ void editorOpen(char * file) {
     char *line = NULL;
     size_t linecap = 0;
     ssize_t linelen;
-    linelen = getline(&line, &linecap, fp);
-    if (linelen != -1) {
+    
+    while ((linelen = getline(&line, &linecap, fp)) != -1) {
         while (linelen > 0 && (line[linelen-1] == '\n' || line[linelen - 1] == '\r')) {
             linelen--;
         }
 
-        E.erow.length = linelen; // excluding '\0' at the end of string
-        E.erow.text = malloc(linelen + 1);
-        memcpy(E.erow.text, line, linelen+1);
-        E.numrows = 1;
+        editorAppendRow(line, linelen);
     }
 
     free(line);
@@ -240,11 +249,11 @@ void editorDrawRows(struct AppendBuffer* ab) {
                 abAppend(ab, "~", 1);
             }  
         } else {
-            int len = E.erow.length;
+            int len = E.erow[i].length;
             if (len > E.screencols) {
                 len = E.screencols;
             }
-            abAppend(ab, E.erow.text, len);
+            abAppend(ab, E.erow[i].text, len);
         }
         
         abAppend(ab, "\x1b[K", 3); // clear rest of current line
@@ -337,6 +346,7 @@ void initEditor() {
     E.cursorX = 0;
     E.cursorY = 0;
     E.numrows = 0;
+    E.erow = NULL;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) {
         die("getWindowSize");
