@@ -47,6 +47,7 @@ struct editorConfig {
     editorrow* erow;
     int numrows; // 1 indexed
     int rowOff; // 0 indexed
+    int colOff; // 0 indexed
 } E;
 
 /*** struct append buffer ***/
@@ -251,11 +252,15 @@ void editorDrawRows(struct AppendBuffer* ab) {
                 abAppend(ab, "~", 1);
             }  
         } else {
-            int len = E.erow[fileRow].length;
+            int len = E.erow[fileRow].length - E.colOff;
+
+            if (len < 0) {
+                len = 0; // when user goes past the current line
+            }
             if (len > E.screencols) {
                 len = E.screencols;
             }
-            abAppend(ab, E.erow[fileRow].text, len);
+            abAppend(ab, &E.erow[fileRow].text[E.colOff], len);
         }
         
         abAppend(ab, "\x1b[K", 3); // clear rest of current line
@@ -266,12 +271,20 @@ void editorDrawRows(struct AppendBuffer* ab) {
 }
 
 void editorScroll() {
-    if (E.cursorY < E.rowOff) {
+    if (E.cursorY < E.rowOff) { // going past top of the screen
         E.rowOff = E.cursorY;
     }
 
-    if (E.cursorY >= E.rowOff + E.screenrows) {
+    if (E.cursorY >= E.rowOff + E.screenrows) { // going past bottom of the screen
         E.rowOff = E.cursorY - E.screenrows + 1;
+    }
+
+    if (E.cursorX < E.colOff) { // going past left of the screen
+        E.colOff = E.cursorX;
+    }
+
+    if (E.cursorX >= E.screencols + E.colOff) { // going past right of the screen
+        E.colOff = E.cursorX - E.screencols + 1;
     }
 }
 
@@ -286,7 +299,7 @@ void editorRefreshTerminal() {
     editorDrawRows(&ab);
 
     char buf[32];
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cursorY - E.rowOff + 1, E.cursorX + 1); // cursorX and cursorY are 0 indexed
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cursorY - E.rowOff + 1, E.cursorX - E.colOff + 1); // cursorX and cursorY are 0 indexed
     abAppend(&ab, buf, strlen(buf));
 
     abAppend(&ab, "\x1b[?25h", 6); // show cursor
@@ -310,9 +323,7 @@ void editorMoveCursor(int c) {
             }
             break;
         case ARROW_RIGHT:
-            if (E.cursorX != E.screencols - 1) {
-                E.cursorX++;
-            }
+            E.cursorX++;
             break;
         case ARROW_UP:
             if (E.cursorY != 0) {
@@ -362,6 +373,7 @@ void initEditor() {
     E.numrows = 0;
     E.erow = NULL;
     E.rowOff = 0;
+    E.colOff = 0;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) {
         die("getWindowSize");
