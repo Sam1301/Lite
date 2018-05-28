@@ -317,6 +317,9 @@ void editorMoveCursor(int c) {
         case ARROW_LEFT:
             if (E.cursorX != 0) {
                 E.cursorX--;
+            } else if (E.cursorY > 0) {
+                E.cursorY--;
+                E.cursorX = E.erow[E.cursorY].length;
             }
             break;
         case ARROW_DOWN:
