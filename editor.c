@@ -14,6 +14,13 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define EDITOR_VERSION "0.0.1"
 
+enum editorKey {
+    ARROW_LEFT = 1000,
+    ARROW_RIGHT,
+    ARROW_UP,
+    ARROW_DOWN
+};
+
 /*** data ***/
 
 struct editorConfig {
@@ -79,7 +86,7 @@ void enableRawMode() {
     die("tcsetattr");
 }
 
-char editorReadKey() {
+int editorReadKey() {
     int nread;
     char ch;
 
@@ -88,7 +95,29 @@ char editorReadKey() {
             die("read");
     }
 
-    return ch;
+    if (ch == '\x1b') {
+        char seq[3];
+        while (read(STDIN_FILENO, &seq[0], 1) != 1) {
+            return '\x1b';
+        }
+        while (read(STDIN_FILENO, &seq[1], 1) != 1) {
+            return '\x1b';
+        }
+
+        if (seq[0] == '[') {
+            switch(seq[1]) {
+                case 'A': return ARROW_UP;
+                case 'B': return ARROW_DOWN;
+                case 'C': return ARROW_RIGHT;
+                case 'D': return ARROW_LEFT;
+            }
+        }
+
+        return '\x1b';
+    } else {
+        return ch;
+    }
+    
 }
 
 int getCursorPosition(int *rows, int *cols) {
@@ -174,35 +203,35 @@ void editorRefreshTerminal() {
 
 /*** input ***/
 
-void editorMoveCursor(char c) {
+void editorMoveCursor(int c) {
     switch(c) {
-        case 'a':
+        case ARROW_LEFT:
             E.cursorX--;
             break;
-        case 's':
+        case ARROW_DOWN:
             E.cursorY++;
             break;
-        case 'd':
+        case ARROW_RIGHT:
             E.cursorX++;
             break;
-        case 'w':
+        case ARROW_UP:
             E.cursorY--;
             break;
     }
 }
 
 void editorProcessKey() {
-    char c = editorReadKey();
+    int c = editorReadKey();
     switch (c) {
         case CTRL_KEY('q') :         // exit on CTrl+Q
             write(STDOUT_FILENO, "\x1b[2J", 4);
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
             break;
-        case 'a':
-        case 's':
-        case 'd':
-        case 'w':
+        case ARROW_LEFT:
+        case ARROW_DOWN:
+        case ARROW_RIGHT:
+        case ARROW_UP:
             editorMoveCursor(c);
             break;
     }
