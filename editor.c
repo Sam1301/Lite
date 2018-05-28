@@ -335,6 +335,12 @@ void editorMoveCursor(int c) {
             }
             break;
     }
+
+    erow = E.cursorY < E.numrows ? &E.erow[E.cursorY] : NULL; // cursorY may be different, hence calculate again
+    int len = erow ? erow->length : 0;
+    if (E.cursorX > len) {
+        E.cursorX = len;
+    }
 }
 
 void editorProcessKey() {
