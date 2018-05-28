@@ -40,12 +40,13 @@ typedef struct editorrow {
 
 struct editorConfig {
     struct termios originalTermi;
-    int screenrows;
-    int screencols;
-    int cursorX;
-    int cursorY;
+    int screenrows; // 1 indexed
+    int screencols; // 1 indexed
+    int cursorX; // 0 indexed
+    int cursorY; // 0 indexed
     editorrow* erow;
-    int numrows;
+    int numrows; // 1 indexed
+    int rowOff; // 0 indexed
 } E;
 
 /*** struct append buffer ***/
@@ -228,7 +229,8 @@ void editorOpen(char * file) {
 
 void editorDrawRows(struct AppendBuffer* ab) {
     for (int i = 0 ; i < E.screenrows ; i++) {
-        if (i >= E.numrows) {
+        int fileRow = i + E.rowOff;
+        if (fileRow >= E.numrows) {
             if (E.numrows == 0 && i == E.screenrows / 2) {
                 char welcome[80];
 
@@ -249,11 +251,11 @@ void editorDrawRows(struct AppendBuffer* ab) {
                 abAppend(ab, "~", 1);
             }  
         } else {
-            int len = E.erow[i].length;
+            int len = E.erow[fileRow].length;
             if (len > E.screencols) {
                 len = E.screencols;
             }
-            abAppend(ab, E.erow[i].text, len);
+            abAppend(ab, E.erow[fileRow].text, len);
         }
         
         abAppend(ab, "\x1b[K", 3); // clear rest of current line
@@ -263,7 +265,19 @@ void editorDrawRows(struct AppendBuffer* ab) {
     } 
 }
 
+void editorScroll() {
+    if (E.cursorY < E.rowOff) {
+        E.rowOff = E.cursorY;
+    }
+
+    if (E.cursorY >= E.rowOff + E.screenrows) {
+        E.rowOff = E.cursorY - E.screenrows + 1;
+    }
+}
+
 void editorRefreshTerminal() {
+    editorScroll();
+
     struct AppendBuffer ab = APPEND_BUFFER_INIT;
 
     abAppend(&ab, "\x1b[?25l", 6); // hide cursor
@@ -272,7 +286,7 @@ void editorRefreshTerminal() {
     editorDrawRows(&ab);
 
     char buf[32];
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cursorY + 1, E.cursorX + 1); // cursorX and cursorY are 0 indexed
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cursorY - E.rowOff + 1, E.cursorX + 1); // cursorX and cursorY are 0 indexed
     abAppend(&ab, buf, strlen(buf));
 
     abAppend(&ab, "\x1b[?25h", 6); // show cursor
@@ -291,9 +305,9 @@ void editorMoveCursor(int c) {
             }
             break;
         case ARROW_DOWN:
-        if (E.cursorY != E.screenrows - 1) {
-            E.cursorY++;
-        }
+            if (E.cursorY < E.numrows) { // allow scroll till end of file
+                E.cursorY++;
+            }
             break;
         case ARROW_RIGHT:
             if (E.cursorX != E.screencols - 1) {
@@ -347,6 +361,7 @@ void initEditor() {
     E.cursorY = 0;
     E.numrows = 0;
     E.erow = NULL;
+    E.rowOff = 0;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) {
         die("getWindowSize");
