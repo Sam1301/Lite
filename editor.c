@@ -12,6 +12,7 @@
 /*** defines ***/
 
 #define CTRL_KEY(k) ((k) & 0x1f)
+#define EDITOR_VERSION "0.0.1"
 
 /*** data ***/
 
@@ -124,7 +125,26 @@ int getWindowSize(int * row, int * col) {
 
 void editorDrawRows(struct AppendBuffer* ab) {
     for (int i = 0 ; i < E.screenrows ; i++) {
-        abAppend(ab, "~", 1);
+        if (i == E.screenrows / 2) {
+            char welcome[80];
+
+            int welcomeLen = snprintf(welcome, sizeof(welcome), "Text Editor -- version %s", EDITOR_VERSION);
+            if (welcomeLen > E.screencols) welcomeLen = E.screencols;
+            
+            int leftPadding = (E.screencols - welcomeLen) / 2;
+            if (leftPadding) {
+                abAppend(ab, "~", 1);
+            }
+            while (leftPadding > 0) {
+                abAppend(ab, " ", 1);
+                leftPadding--;
+            }
+
+            abAppend(ab, welcome, welcomeLen);
+        } else {
+            abAppend(ab, "~", 1);
+        }
+        
         abAppend(ab, "\x1b[K", 3); // clear rest of current line
         if (i < E.screenrows - 1) {
             abAppend(ab, "\r\n", 2);
