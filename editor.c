@@ -311,6 +311,8 @@ void editorRefreshTerminal() {
 /*** input ***/
 
 void editorMoveCursor(int c) {
+    editorrow *erow = E.cursorY < E.numrows ? &E.erow[E.cursorY] : NULL;
+
     switch(c) {
         case ARROW_LEFT:
             if (E.cursorX != 0) {
@@ -318,12 +320,14 @@ void editorMoveCursor(int c) {
             }
             break;
         case ARROW_DOWN:
-            if (E.cursorY < E.numrows) { // allow scroll till end of file
+            if (E.cursorY < E.numrows) { // allow scroll till one line past end of file
                 E.cursorY++;
             }
             break;
         case ARROW_RIGHT:
-            E.cursorX++;
+            if (erow && E.cursorX < erow->length) { // allow scroll till one char past end of line
+                E.cursorX++;
+            }
             break;
         case ARROW_UP:
             if (E.cursorY != 0) {
