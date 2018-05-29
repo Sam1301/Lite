@@ -419,6 +419,13 @@ void editorProcessKey() {
         case PAGE_UP:
         case PAGE_DOWN:
             {
+                if (c == PAGE_UP) {
+                    E.cursorY = E.rowOff;
+                } else if (c == PAGE_DOWN) {
+                    E.cursorY = E.rowOff + E.screenrows - 1;
+                    if (E.cursorY > E.numrows) E.cursorY = E.numrows;
+                }
+
                 int ii = E.screenrows;
                 while (ii--) {
                     editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
