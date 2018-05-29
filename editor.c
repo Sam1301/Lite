@@ -18,6 +18,7 @@
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define EDITOR_VERSION "0.0.1"
+#define EDITOR_TAB 8
 
 enum editorKey {
     ARROW_LEFT = 1000,
@@ -50,6 +51,7 @@ struct editorConfig {
     int numrows; // 1 indexed
     int rowOff; // 0 indexed
     int colOff; // 0 indexed
+    int renderX; // 0 indexed
 } E;
 
 /*** struct append buffer ***/
@@ -203,13 +205,13 @@ void editorUpdateRow(editorrow * row) {
     }
 
     free(row->render);
-    row->render = malloc(row->length + tabs * 7 + 1); // 1 char for tabs already counted in row.length
+    row->render = malloc(row->length + tabs * (EDITOR_TAB - 1) + 1); // 1 char for tabs already counted in row.length
     
     int idx = 0;  
     for (int i = 0 ; i < row->length ; i++) {
         if (row->text[i] == '\t') {
             row->render[idx++] = ' ';
-            while (idx % 8 != 0) {
+            while (idx % EDITOR_TAB != 0) {
                 row->render[idx++] = ' ';
             }
         } else {
@@ -234,6 +236,18 @@ void editorAppendRow(char *s, size_t len) {
     editorUpdateRow(&E.erow[pos]);
 
     E.numrows++;
+}
+
+int editorRowCursorXToRenderX(editorrow * erow, int cx) {
+    int rx = 0;
+    for (int i = 0; i < cx; i++) {
+        if (erow->text[i] == '\t') {
+            rx += (EDITOR_TAB - 1) - (rx % EDITOR_TAB);
+        }
+        rx++;
+    }
+    
+    return rx;
 }
 
 /*** file I/O ***/
@@ -305,6 +319,11 @@ void editorDrawRows(struct AppendBuffer* ab) {
 }
 
 void editorScroll() {
+    E.renderX = 0;
+    if (E.cursorY < E.numrows) {
+        E.renderX = editorRowCursorXToRenderX(&E.erow[E.cursorY], E.cursorX);
+    }
+
     if (E.cursorY < E.rowOff) { // going past top of the screen
         E.rowOff = E.cursorY;
     }
@@ -313,12 +332,12 @@ void editorScroll() {
         E.rowOff = E.cursorY - E.screenrows + 1;
     }
 
-    if (E.cursorX < E.colOff) { // going past left of the screen
-        E.colOff = E.cursorX;
+    if (E.renderX < E.colOff) { // going past left of the screen
+        E.colOff = E.renderX;
     }
 
-    if (E.cursorX >= E.screencols + E.colOff) { // going past right of the screen
-        E.colOff = E.cursorX - E.screencols + 1;
+    if (E.renderX >= E.screencols + E.colOff) { // going past right of the screen
+        E.colOff = E.renderX - E.screencols + 1;
     }
 }
 
@@ -333,7 +352,7 @@ void editorRefreshTerminal() {
     editorDrawRows(&ab);
 
     char buf[32];
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cursorY - E.rowOff + 1, E.cursorX - E.colOff + 1); // cursorX and cursorY are 0 indexed
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cursorY - E.rowOff + 1, E.renderX - E.colOff + 1); // cursorX and cursorY are 0 indexed
     abAppend(&ab, buf, strlen(buf));
 
     abAppend(&ab, "\x1b[?25h", 6); // show cursor
@@ -424,6 +443,7 @@ void initEditor() {
     E.erow = NULL;
     E.rowOff = 0;
     E.colOff = 0;
+    E.renderX = 0;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) {
         die("getWindowSize");
