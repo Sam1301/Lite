@@ -436,7 +436,9 @@ void editorProcessKey() {
             E.cursorX = 0;
             break;
         case END_KEY:
-            E.cursorX = E.screencols - 1;
+            if (E.cursorY < E.numrows) {
+                E.cursorX = E.erow[E.cursorY].length;
+            }
             break;
     }
 }
