@@ -23,6 +23,7 @@
 #define EDITOR_TAB 8
 
 enum editorKey {
+    BACKSPACE = 127,
     ARROW_LEFT = 1000,
     ARROW_RIGHT,
     ARROW_UP,
@@ -479,7 +480,7 @@ void editorMoveCursor(int c) {
 
 void editorProcessKey() {
     int c = editorReadKey();
-    switch (c) {
+    switch (c) {        
         case CTRL_KEY('q') :         // exit on CTrl+Q
             write(STDOUT_FILENO, "\x1b[2J", 4);
             write(STDOUT_FILENO, "\x1b[H", 3);
@@ -514,6 +515,17 @@ void editorProcessKey() {
             if (E.cursorY < E.numrows) {
                 E.cursorX = E.erow[E.cursorY].length;
             }
+            break;
+        case '\r':
+            /* TODO */
+            break;
+        case BACKSPACE:
+        case DEL_KEY:
+        case CTRL_KEY('h'):
+            /* TODO */
+            break;
+        case CTRL_KEY('l'): // do nothing for escape key and Ctrl+L
+        case '\x1b':
             break;
         default:
             editorInsertChar(c);
