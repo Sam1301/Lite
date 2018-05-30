@@ -13,6 +13,8 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <strings.h>
+#include <time.h>
+#include <stdarg.h>
 
 /*** defines ***/
 
@@ -53,6 +55,8 @@ struct editorConfig {
     int colOff; // 0 indexed
     int renderX; // 0 indexed
     char* filename;
+    char statusmsg[80];
+    time_t statusmsg_time;
 } E;
 
 /*** struct append buffer ***/
@@ -342,6 +346,18 @@ void editorDrawStatusBar(struct AppendBuffer *ab) {
         }
     }
     abAppend(ab, "\x1b[m", 3); // inverted colors off
+    abAppend(ab, "\r\n", 2);
+}
+
+void editorDrawMessageBar(struct AppendBuffer *ab) {
+    abAppend(ab, "\x1b[K", 3);
+    int messageLen = strlen(E.statusmsg);
+    if (messageLen > E.screencols) {
+        messageLen = E.screencols;
+    }
+    if (messageLen && time(NULL) - E.statusmsg_time < 5) {
+        abAppend(ab, E.statusmsg, messageLen);
+    }
 }
 
 void editorScroll() {
@@ -377,7 +393,8 @@ void editorRefreshTerminal() {
 
     editorDrawRows(&ab);
     editorDrawStatusBar(&ab);
-
+    editorDrawMessageBar(&ab);
+    
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cursorY - E.rowOff + 1, E.renderX - E.colOff + 1); // cursorX and cursorY are 0 indexed
     abAppend(&ab, buf, strlen(buf));
@@ -386,6 +403,14 @@ void editorRefreshTerminal() {
 
     write(STDOUT_FILENO, ab.buffer, ab.length);
     abFree(&ab);
+}
+
+void editorSetStatusMessage(const char *formatstr, ...) {
+    va_list ap;
+    va_start(ap, formatstr);
+    vsnprintf(E.statusmsg, sizeof(E.statusmsg), formatstr, ap);
+    va_end(ap);
+    E.statusmsg_time = time(NULL);
 }
 
 /*** input ***/
@@ -481,11 +506,13 @@ void initEditor() {
     E.colOff = 0;
     E.renderX = 0;
     E.filename = NULL;
+    E.statusmsg[0] = '\0';
+    E.statusmsg_time = 0;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) {
         die("getWindowSize");
     }
-    E.screenrows--; // for status bar
+    E.screenrows -= 2; // for status and message bar
 }
 
 int main(int argc, char *argv[]) {
@@ -495,6 +522,8 @@ int main(int argc, char *argv[]) {
         editorOpen(argv[1]);
     }
     
+    editorSetStatusMessage("HELP: Ctrl-Q = quit");
+
     while (1) {
         editorRefreshTerminal();
         editorProcessKey();
