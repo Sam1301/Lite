@@ -52,6 +52,7 @@ struct editorConfig {
     int rowOff; // 0 indexed
     int colOff; // 0 indexed
     int renderX; // 0 indexed
+    char* filename;
 } E;
 
 /*** struct append buffer ***/
@@ -253,6 +254,9 @@ int editorRowCursorXToRenderX(editorrow * erow, int cx) {
 /*** file I/O ***/
 
 void editorOpen(char * file) {
+    free(E.filename);
+    E.filename = strdup(file);
+
     FILE *fp = fopen(file, "r");
     if (!fp) {
         die("fopen");
@@ -312,10 +316,32 @@ void editorDrawRows(struct AppendBuffer* ab) {
         }
         
         abAppend(ab, "\x1b[K", 3); // clear rest of current line
-        if (i < E.screenrows - 1) {
-            abAppend(ab, "\r\n", 2);
-        }
+        abAppend(ab, "\r\n", 2);
     } 
+}
+
+void editorDrawStatusBar(struct AppendBuffer *ab) {
+    abAppend(ab, "\x1b[7m", 4); // inverted colors on
+    
+    char status[80], lineStatus[80];
+    int len = snprintf(status, sizeof(status), "%.20s - %d lines", E.filename ? E.filename : "[No Name]", E.numrows);
+    int lineLen = snprintf(lineStatus, sizeof(lineStatus), "%d:%d", E.cursorY + 1, E.numrows);
+
+    if (len > E.screencols) {
+        len = E.screencols;
+    }
+    abAppend(ab, status, len);
+
+    while (len < E.screencols) {
+        if (E.screencols - len == lineLen) {
+            abAppend(ab, lineStatus, lineLen);
+            break;
+        } else {
+            abAppend(ab, " ", 1);
+            len++;
+        }
+    }
+    abAppend(ab, "\x1b[m", 3); // inverted colors off
 }
 
 void editorScroll() {
@@ -350,6 +376,7 @@ void editorRefreshTerminal() {
     abAppend(&ab, "\x1b[H", 3); // bring cursor back up
 
     editorDrawRows(&ab);
+    editorDrawStatusBar(&ab);
 
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cursorY - E.rowOff + 1, E.renderX - E.colOff + 1); // cursorX and cursorY are 0 indexed
@@ -453,10 +480,12 @@ void initEditor() {
     E.rowOff = 0;
     E.colOff = 0;
     E.renderX = 0;
+    E.filename = NULL;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) {
         die("getWindowSize");
     }
+    E.screenrows--; // for status bar
 }
 
 int main(int argc, char *argv[]) {
