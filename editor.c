@@ -22,6 +22,7 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define EDITOR_VERSION "0.0.1"
 #define EDITOR_TAB 8
+#define EDITOR_QUIT_TIMES 1
 
 enum editorKey {
     BACKSPACE = 127,
@@ -539,8 +540,15 @@ void editorMoveCursor(int c) {
 
 void editorProcessKey() {
     int c = editorReadKey();
+    static int quit_times = EDITOR_QUIT_TIMES;
+
     switch (c) {        
         case CTRL_KEY('q') :         // exit on CTrl+Q
+            if (E.dirty && quit_times > 0) {
+                editorSetStatusMessage("WARNING! File has unsaved changes. Press Ctrl-Q %d more time(s) to quit.", quit_times);
+                quit_times--;
+                return;
+            }
             write(STDOUT_FILENO, "\x1b[2J", 4);
             write(STDOUT_FILENO, "\x1b[H", 3);
             exit(0);
@@ -592,6 +600,8 @@ void editorProcessKey() {
         default:
             editorInsertChar(c);
     }
+    
+    quit_times = EDITOR_QUIT_TIMES;
 }
 
 /*** init ***/
