@@ -59,6 +59,7 @@ struct editorConfig {
     char* filename;
     char statusmsg[80];
     time_t statusmsg_time;
+    int dirty;
 } E;
 
 /*** prototypes ***/
@@ -248,6 +249,7 @@ void editorAppendRow(char *s, size_t len) {
     editorUpdateRow(&E.erow[pos]);
 
     E.numrows++;
+    E.dirty++;
 }
 
 int editorRowCursorXToRenderX(editorrow * erow, int cx) {
@@ -272,6 +274,7 @@ void editorRowInsertChar(editorrow* erow, int at, char c) {
     erow->length++;
     erow->text[at] = c;
     editorUpdateRow(erow); // populate render and rsize for this erow
+    E.dirty++;
 }
 
 /*** editor operations ***/
@@ -310,6 +313,7 @@ void editorOpen(char * file) {
 
     free(line);
     fclose(fp);
+    E.dirty = 0; // when file is opened, there are no unsaved changes.
 }
 
 // caller should free the memory of pointer returned
@@ -349,6 +353,7 @@ void editorSave() {
                 close(fd);
                 free(buf);
                 editorSetStatusMessage("%d bytes written to disk", len);
+                E.dirty = 0; // changes saved successfully
                 return;
             }
         }
@@ -404,7 +409,9 @@ void editorDrawStatusBar(struct AppendBuffer *ab) {
     abAppend(ab, "\x1b[7m", 4); // inverted colors on
     
     char status[80], lineStatus[80];
-    int len = snprintf(status, sizeof(status), "%.20s - %d lines", E.filename ? E.filename : "[No Name]", E.numrows);
+    int len = snprintf(status, sizeof(status), "%.20s - %d lines %s", 
+        E.filename ? E.filename : "[No Name]", E.numrows,
+        E.dirty ? "(modified)" : "");
     int lineLen = snprintf(lineStatus, sizeof(lineStatus), "%d:%d", E.cursorY + 1, E.numrows);
 
     if (len > E.screencols) {
@@ -600,6 +607,7 @@ void initEditor() {
     E.filename = NULL;
     E.statusmsg[0] = '\0';
     E.statusmsg_time = 0;
+    E.dirty = 0;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) {
         die("getWindowSize");
