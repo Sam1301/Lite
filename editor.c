@@ -278,6 +278,17 @@ void editorRowInsertChar(editorrow* erow, int at, char c) {
     E.dirty++;
 }
 
+void editorRowDelChar(editorrow* erow, int at) {
+    if (at < 0 || at > erow->length) {
+        return;
+    }
+
+    memmove(&erow->text[at], &erow->text[at+1], erow->length - at);
+    erow->length--;
+    editorUpdateRow(erow);
+    E.dirty++;    
+}
+
 /*** editor operations ***/
 
 void editorInsertChar(int c) {
@@ -287,6 +298,15 @@ void editorInsertChar(int c) {
 
     editorRowInsertChar(&E.erow[E.cursorY], E.cursorX, c);
     E.cursorX++;
+}
+
+void editorDelChar() {
+    if (E.cursorY == E.screenrows) {
+        return;
+    }
+
+    editorRowDelChar(&E.erow[E.cursorY], E.cursorX-1);
+    E.cursorX--;
 }
 
 /*** file I/O ***/
@@ -589,7 +609,8 @@ void editorProcessKey() {
         case BACKSPACE:
         case DEL_KEY:
         case CTRL_KEY('h'):
-            /* TODO */
+            if (c == DEL_KEY) editorMoveCursor(ARROW_RIGHT);
+            editorDelChar();
             break;
         case CTRL_KEY('l'): // do nothing for escape key and Ctrl+L
         case '\x1b':
@@ -600,7 +621,7 @@ void editorProcessKey() {
         default:
             editorInsertChar(c);
     }
-    
+
     quit_times = EDITOR_QUIT_TIMES;
 }
 
