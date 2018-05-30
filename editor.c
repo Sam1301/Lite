@@ -255,6 +255,29 @@ int editorRowCursorXToRenderX(editorrow * erow, int cx) {
     return rx;
 }
 
+void editorRowInsertChar(editorrow* erow, int at, char c) {
+    if (at < 0 || at > erow->length) {
+        at = erow->length;
+    }
+
+    erow->text = realloc(erow->text, erow->length + 2);
+    memmove(&erow->text[at+1], &erow->text[at], erow->length - at + 1);
+    erow->length++;
+    erow->text[at] = c;
+    editorUpdateRow(erow); // populate render and rsize for this erow
+}
+
+/*** editor operations ***/
+
+void editorInsertChar(int c) {
+    if (E.cursorY == E.numrows) {
+        editorAppendRow("", 0); // add a new row after end of file
+    }
+
+    editorRowInsertChar(&E.erow[E.cursorY], E.cursorX, c);
+    E.cursorX++;
+}
+
 /*** file I/O ***/
 
 void editorOpen(char * file) {
@@ -394,7 +417,7 @@ void editorRefreshTerminal() {
     editorDrawRows(&ab);
     editorDrawStatusBar(&ab);
     editorDrawMessageBar(&ab);
-    
+
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cursorY - E.rowOff + 1, E.renderX - E.colOff + 1); // cursorX and cursorY are 0 indexed
     abAppend(&ab, buf, strlen(buf));
@@ -492,6 +515,8 @@ void editorProcessKey() {
                 E.cursorX = E.erow[E.cursorY].length;
             }
             break;
+        default:
+            editorInsertChar(c);
     }
 }
 
