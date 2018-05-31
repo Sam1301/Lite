@@ -66,6 +66,7 @@ struct editorConfig {
 /*** prototypes ***/
 
 void editorSetStatusMessage(const char *formatstr, ...);
+char* editorPrompt(char *prompt);
 
 /*** struct append buffer ***/
 
@@ -324,7 +325,7 @@ void editorInsertChar(int c) {
     if (E.cursorY == E.numrows) {
         editorInsertRow(E.numrows, "", 0); // add a new row after end of file
     }
-    
+
     editorRowInsertChar(&E.erow[E.cursorY], E.cursorX, c);
     E.cursorX++;
 }
@@ -415,7 +416,11 @@ char* editorRowsToString(int *len) {
 
 void editorSave() {
     if (E.filename == NULL) {
-        return;
+        E.filename = editorPrompt("Save as: %s (ESC to cancel)");
+        if (E.filename == NULL) {
+            editorSetStatusMessage("Save aborted");
+            return;
+        }
     }
 
     int len;
@@ -676,6 +681,43 @@ void editorProcessKey() {
     }
 
     quit_times = EDITOR_QUIT_TIMES;
+}
+
+char* editorPrompt(char *prompt) {
+    size_t bufsize = 128;
+    char *buf = malloc(bufsize);
+
+    size_t buflen = 0;
+    buf[0] = '\0';
+
+    while (1) {
+        editorSetStatusMessage(prompt, buf);
+        editorRefreshTerminal();
+
+        int c = editorReadKey();
+
+        if (c == DEL_KEY || c == CTRL_KEY('h') || c == BACKSPACE) {
+            if (buflen != 0) {
+                buf[--buflen] = '\0';
+            }
+        } else if (c == '\x1b') {
+            editorSetStatusMessage("");
+            free(buf);
+            return NULL;
+        } else if (c == '\r') {
+            if (buflen != 0) {
+                editorSetStatusMessage("");
+                return buf;
+            }
+        } else if (!iscntrl(c) && c < 128) {
+            if (buflen == bufsize - 1) {
+                buflen *= 2;
+                buf = realloc(buf, buflen);
+            }
+            buf[buflen++] = c;
+            buf[buflen] = '\0';
+        }
+    }
 }
 
 /*** init ***/
