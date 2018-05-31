@@ -237,17 +237,21 @@ void editorUpdateRow(editorrow * row) {
     row->rsize = idx;
 }
 
-void editorAppendRow(char *s, size_t len) {
-    E.erow = realloc(E.erow, sizeof(editorrow) * (E.numrows + 1));
-
-    int pos = E.numrows;
-    E.erow[pos].length = len; // excluding '\0' at the end of string
-    E.erow[pos].text = malloc(len + 1);
-    memcpy(E.erow[pos].text, s, len+1);
+void editorInsertRow(int at, char *s, size_t len) {
+    if (at < 0 || at > E.numrows) {
+        return ;
+    }
     
-    E.erow[pos].render = NULL;
-    E.erow[pos].rsize = 0;
-    editorUpdateRow(&E.erow[pos]);
+    E.erow = realloc(E.erow, sizeof(editorrow) * (E.numrows + 1));
+    memmove(&E.erow[at+1], &E.erow[at], sizeof(editorrow) * (E.numrows - at));
+
+    E.erow[at].length = len; // excluding '\0' at the end of string
+    E.erow[at].text = malloc(len + 1);
+    memcpy(E.erow[at].text, s, len+1);
+    
+    E.erow[at].render = NULL;
+    E.erow[at].rsize = 0;
+    editorUpdateRow(&E.erow[at]);
 
     E.numrows++;
     E.dirty++;
@@ -318,9 +322,9 @@ void editorRowAppendString(editorrow * row, char* s, size_t len) {
 
 void editorInsertChar(int c) {
     if (E.cursorY == E.numrows) {
-        editorAppendRow("", 0); // add a new row after end of file
+        editorInsertRow(E.numrows, "", 0); // add a new row after end of file
     }
-
+    
     editorRowInsertChar(&E.erow[E.cursorY], E.cursorX, c);
     E.cursorX++;
 }
@@ -340,6 +344,22 @@ void editorDelChar() {
         editorDelRow(E.cursorY);
         E.cursorY--;
     }
+}
+
+void editorInsertNewLine() {
+    if (E.cursorX == 0) {
+        editorInsertRow(E.cursorY, "", 0);
+    } else {
+        editorrow *row = &E.erow[E.cursorY];
+        editorInsertRow(E.cursorY+1, &row->text[E.cursorX], row->length - E.cursorX);
+        row = &E.erow[E.cursorY]; // reassign as editorInsertRow reallocates E.erow pointer
+        row->length = E.cursorX;
+        row->text[row->length] = '\0';
+        editorUpdateRow(row);
+    }
+
+    E.cursorX = 0;
+    E.cursorY++;
 }
 
 /*** file I/O ***/
@@ -362,7 +382,7 @@ void editorOpen(char * file) {
             linelen--;
         }
 
-        editorAppendRow(line, linelen);
+        editorInsertRow(E.numrows, line, linelen);
     }
 
     free(line);
@@ -637,7 +657,7 @@ void editorProcessKey() {
             }
             break;
         case '\r':
-            /* TODO */
+            editorInsertNewLine();
             break;
         case BACKSPACE:
         case DEL_KEY:
