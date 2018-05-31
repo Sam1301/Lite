@@ -1,8 +1,6 @@
-# Lite
-
 <img src="logo.png">
 
-Lite is a terminal based lightweight text editor built using C language.
+Lite is a terminal based lightweight text editor built using only C language.
 
 ## Dependencies
 Standard C libraries only
