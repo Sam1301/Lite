@@ -1,4 +1,7 @@
 # Lite
+
+<img src="logo.png">
+
 Lite is a terminal based lightweight text editor built using C language.
 
 ## Dependencies
