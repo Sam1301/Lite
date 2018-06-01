@@ -270,6 +270,19 @@ int editorRowCursorXToRenderX(editorrow * erow, int cx) {
     return rx;
 }
 
+int editorRowRenderCToCursorX(editorrow *erow, int rx) {
+    int cur_rx = 0;
+    int cx;
+    for (cx = 0; cx < erow->length; cx++) {
+        if (erow->text[cx] == '\t') {
+            cur_rx += (EDITOR_TAB - 1) - (cur_rx % EDITOR_TAB);
+        }
+        cur_rx++;
+        if (cur_rx > rx) return cx;
+    }
+    return cx;
+}
+
 void editorRowInsertChar(editorrow* erow, int at, char c) {
     if (at < 0 || at > erow->length) {
         at = erow->length;
@@ -440,6 +453,32 @@ void editorSave() {
     }
     free(buf);
     editorSetStatusMessage("Can't save! I/O error: %s", strerror(errno));
+}
+
+/*** find ***/
+
+void editorFind() {
+    char *query = editorPrompt("Search: %s (ESC to cancel)");
+    if (query == NULL) {
+        return ;
+    }
+
+    for (int i = 0 ; i < E.numrows ; i++) {
+        editorrow* erow = &E.erow[i];
+        char *match = strstr(erow->render, query);
+        if (match) {
+            E.cursorY = i;
+            E.cursorX = editorRowRenderCToCursorX(erow, match - erow->render);
+            /* so that we are scrolled to the very bottom of the file, 
+            which will cause editorScroll() to scroll upwards at the next 
+            screen refresh so that the matching line will be at the very 
+            top of the screen.*/
+            E.rowOff = E.numrows;
+            break; 
+        }
+    }
+
+    free(query);
 }
 
 /*** output ***/
@@ -676,6 +715,9 @@ void editorProcessKey() {
         case CTRL_KEY('s'):
             editorSave();
             break;
+        case CTRL_KEY('f'):
+            editorFind();
+            break;
         default:
             editorInsertChar(c);
     }
@@ -748,7 +790,7 @@ int main(int argc, char *argv[]) {
         editorOpen(argv[1]);
     }
     
-    editorSetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-S = save");
+    editorSetStatusMessage("HELP: Ctrl-Q = quit | Ctrl-S = save | Ctrl-F = search");
 
     while (1) {
         editorRefreshTerminal();
