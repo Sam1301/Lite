@@ -458,15 +458,41 @@ void editorSave() {
 /*** find ***/
 
 void editorFindCallback(char* query, int cur_key) {
+    static int last_match = -1; // last matching text y position
+    static int direction = 1; // 1 for forward annd -1 for backward
+
     if (cur_key == '\r' || cur_key == '\x1b') {
+        last_match = -1;
+        direction = 1;
         return;
+    } else if (cur_key == ARROW_DOWN || cur_key == ARROW_RIGHT) {
+        direction = 1;
+    } else if (cur_key == ARROW_UP || cur_key == ARROW_LEFT) {
+        direction = -1;
+    } else {
+        direction = 1;
+        last_match = -1;
     }
 
+    if (last_match == -1) {
+        direction = 1;
+    }
+    int current = last_match;
+
     for (int i = 0 ; i < E.numrows ; i++) {
-        editorrow* erow = &E.erow[i];
+        current += direction;
+
+        if (current == -1) {
+            current = E.numrows - 1;
+        } else if (current == E.numrows) {
+            current = 0;
+        }
+
+        editorrow* erow = &E.erow[current];
         char *match = strstr(erow->render, query);
         if (match) {
-            E.cursorY = i;
+            last_match = current;
+            E.cursorY = current;
             E.cursorX = editorRowRenderCToCursorX(erow, match - erow->render);
             /* so that we are scrolled to the very bottom of the file, 
             which will cause editorScroll() to scroll upwards at the next 
@@ -484,7 +510,7 @@ void editorFind() {
     int saved_colOff = E.colOff;
     int saved_rowOff = E.rowOff;
 
-    char *query = editorPrompt("Search: %s (ESC to cancel)", editorFindCallback);
+    char *query = editorPrompt("Search: %s (Use ESC/Arrows/Enter)", editorFindCallback);
     
     if (query) {
         free(query);
