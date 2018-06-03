@@ -39,7 +39,8 @@ enum editorKey {
 
 enum editorHighlight {
   HL_NORMAL = 0,
-  HL_NUMBER
+  HL_NUMBER,
+  HL_MATCH
 };
 
 /*** data ***/
@@ -232,6 +233,8 @@ int editorSyntaxToColor(int hl) {
     switch (hl) {
         case HL_NUMBER: 
             return 32;
+        case HL_MATCH: // search query match
+            return 31;
         default: 
             return 37;
     }
@@ -532,6 +535,7 @@ void editorFindCallback(char* query, int cur_key) {
             screen refresh so that the matching line will be at the very 
             top of the screen.*/
             E.rowOff = E.numrows;
+            memset(&erow->hl[match - erow->render], HL_MATCH, strlen(query));
             break; 
         }
     }
