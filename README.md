@@ -1,4 +1,4 @@
-<img src="logo.png">
+# :pencil2: Lite
 
 Lite is a terminal based lightweight text editor built using only C language.
 
@@ -21,30 +21,22 @@ Run the following command:
 $ cd Lite && ./editor
 ```
 
-## Supported Features
+## How to use
 
-1) View existing files.
-
-2) Edit exiting or new files creted.
-
-## Help
-
-| Command | Function  |
-|---------|-----------|
-| Ctrl+Q  | Exit      |
-| Ctrl+S  | Save      |
-| ESC     | exit mode |
+| Command                      | Function        |
+|------------------------------|-----------------|
+| Ctrl+Q                       | Exit            |
+| Ctrl+S                       | Save            |
+| ESC | Enter                  | exit mode       |
+| :arrow_left: | :arrow_up:    | search backward |
+| :arrow_right: | :arrow_down: | search forward  |
 
 ## Issues
 
 You can report the bugs at the [issue tracker](https://github.com/Sam1301/Lite/issues)
 
-## License
+## References
 
-The `kilo` source code contained in `steps.diff` was
-[originally written](https://github.com/antirez/kilo) by Salvatore Sanfilippo
-(aka [antirez](https://github.com/antirez)) and released under the BSD 2-clause
-license (see `steps.diff.LICENSE`). I have made changes to the original code.
-
-All other files in this repository are licensed under
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+* [Kilo](https://github.com/antirez/kilo) written by [Salvatore Sanfilippo](https://github.com/antirez/kilo)
+* [ANSI_escape_code wiki](https://en.wikipedia.org/wiki/ANSI_escape_code)
+* [VT100 user guide](https://vt100.net/docs/vt100-ug/chapter3.html)
