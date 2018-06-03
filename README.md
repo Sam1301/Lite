@@ -17,10 +17,20 @@ $ git clone https://github.com/Sam1301/Lite.git
 ```
 
 ### Run
-Run the following command:
+Run the following commands:
 
 ```bash
-$ cd Lite && ./lite
+$ cd Lite && make
+```
+
+```bash
+$ ./Lite filename
+```
+
+To create a new file run the following command instead:
+
+```bash
+$ ./Lite
 ```
 
 ## How to Use
