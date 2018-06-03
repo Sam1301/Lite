@@ -46,7 +46,8 @@ enum editorHighlight {
     HL_NUMBER,
     HL_MATCH,
     HL_KEYWORD1,
-    HL_KEYWORD2
+    HL_KEYWORD2,
+    HL_MLCOMMENT
 };
 
 /*** data ***/
@@ -56,15 +57,19 @@ struct editorSyntax {
     char **filematch;
     int flags;
     char *singleline_comment_start; // single comment line pattern for this language
+    char *multiline_comment_start;
+    char *multiline_comment_end;
     char **keywords;
 };
 
 typedef struct editorrow {
+    int idx;
     int length;
     char *text;
     int rsize;
     char *render;
     unsigned char *hl; // stores the syntax highlighting codes for each render char
+    int hl_open_comment;
 } editorrow;
 
 struct editorConfig {
@@ -100,7 +105,7 @@ struct editorSyntax HLDB[] = {
         "c",
         C_HL_extensions,
         HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS,
-        "//",
+        "//", "/*", "*/",
         C_HL_keywords
     },
 };
@@ -267,24 +272,49 @@ void editorUpdateSyntax(editorrow *row) {
     char **keywords = E.syntax->keywords;
 
     char *scs = E.syntax->singleline_comment_start;
+    char *mcs = E.syntax->multiline_comment_start;
+    char *mce = E.syntax->multiline_comment_end;
+
     int scs_len = scs ? strlen(scs) : 0;
+    int mcs_len = mcs ? strlen(mcs) : 0;
+    int mce_len = mce ? strlen(mce) : 0;
 
     int prev_sep = 1;
     int in_string = 0;
-
+    int in_comment = (row->idx > 0 && E.erow[row->idx - 1].hl_open_comment);
 
     int i = 0;
     while (i < row->rsize) {
         char c = row->render[i];
         unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
 
-        if (scs_len && !in_string) {
+        if (scs_len && !in_string && !in_comment) {
             if (!strncmp(&row->render[i], scs, scs_len)) {
                 memset(&row->hl[i], HL_COMMENT, row->rsize - i);
                 break;
             }
         }
 
+        if (mcs_len && mce_len && !in_string) {
+            if (in_comment) {
+                row->hl[i] = HL_MLCOMMENT;
+                if (!strncmp(&row->render[i], mce, mce_len)) {
+                    memset(&row->hl[i], HL_MLCOMMENT, mce_len);
+                    i += mce_len;
+                    in_comment = 0;
+                    prev_sep = 1;
+                    continue;
+                } else {
+                    i++;
+                    continue;
+                }
+            } else if (!strncmp(&row->render[i], mcs, mcs_len)) {
+                memset(&row->hl[i], HL_MLCOMMENT, mcs_len);
+                i += mcs_len;
+                in_comment = 1;
+                continue;
+            }
+        }
 
         if (E.syntax->flags & HL_HIGHLIGHT_STRINGS) {
             if (in_string) {
@@ -341,6 +371,12 @@ void editorUpdateSyntax(editorrow *row) {
         prev_sep = is_separator(c);
         i++;
     }
+
+    int changed = (row->hl_open_comment != in_comment);
+    row->hl_open_comment = in_comment;
+    if (changed && row->idx + 1 < E.numrows) {
+        editorUpdateSyntax(&E.erow[row->idx + 1]);
+    }    
 }
 
 int editorSyntaxToColor(int hl) {
@@ -357,6 +393,8 @@ int editorSyntaxToColor(int hl) {
             return 31;
         case HL_KEYWORD2: 
             return 34;
+        case HL_MLCOMMENT: 
+            return 92;
         default: 
             return 37;
     }
@@ -425,6 +463,10 @@ void editorInsertRow(int at, char *s, size_t len) {
     
     E.erow = realloc(E.erow, sizeof(editorrow) * (E.numrows + 1));
     memmove(&E.erow[at+1], &E.erow[at], sizeof(editorrow) * (E.numrows - at));
+    for (int j = at + 1; j <= E.numrows; j++) {
+        E.erow[j].idx++;
+    }
+    E.erow[at].idx = at;
 
     E.erow[at].length = len; // excluding '\0' at the end of string
     E.erow[at].text = malloc(len + 1);
@@ -434,6 +476,7 @@ void editorInsertRow(int at, char *s, size_t len) {
     E.erow[at].hl = NULL;
 
     E.erow[at].rsize = 0;
+    E.erow[at].hl_open_comment = 0;
     editorUpdateRow(&E.erow[at]);
 
     E.numrows++;
@@ -501,7 +544,10 @@ void editorDelRow(int at) {
     }
 
     editorFreeRow(&E.erow[at]);
-    memcpy(&E.erow[at], &E.erow[at+1], sizeof(editorrow) * (E.numrows - at - 1));
+    memmove(&E.erow[at], &E.erow[at+1], sizeof(editorrow) * (E.numrows - at - 1));
+    for (int j = at; j < E.numrows - 1; j++) {
+        E.erow[j].idx--;
+    }
     E.numrows--;
     E.dirty++;
 }
