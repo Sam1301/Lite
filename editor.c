@@ -497,6 +497,15 @@ void editorFindCallback(char* query, int cur_key) {
     static int last_match = -1; // last matching text y position
     static int direction = 1; // 1 for forward annd -1 for backward
 
+    static int saved_hl_line;
+    static char *saved_hl = NULL;
+    
+    if (saved_hl) {
+        memcpy(E.erow[saved_hl_line].hl, saved_hl, E.erow[saved_hl_line].rsize);
+        free(saved_hl);
+        saved_hl = NULL;
+    }
+
     if (cur_key == '\r' || cur_key == '\x1b') {
         last_match = -1;
         direction = 1;
@@ -535,6 +544,10 @@ void editorFindCallback(char* query, int cur_key) {
             screen refresh so that the matching line will be at the very 
             top of the screen.*/
             E.rowOff = E.numrows;
+
+            saved_hl_line = current;
+            saved_hl = malloc(erow->rsize);
+            memcpy(saved_hl, erow->hl, erow->rsize);
             memset(&erow->hl[match - erow->render], HL_MATCH, strlen(query));
             break; 
         }
