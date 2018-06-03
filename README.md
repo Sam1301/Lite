@@ -1,9 +1,11 @@
 # :pencil2: Lite
 
-Lite is a terminal based lightweight text editor built using only C language.
+Lite is a terminal based lightweight text editor built using only standard C libraries.
+
+<img src="assets/lite_screenshot.png" />
 
 ## Dependencies
-Standard C libraries only
+Standard C libraries
 
 ## Installation
 
@@ -18,18 +20,23 @@ $ git clone https://github.com/Sam1301/Lite.git
 Run the following command:
 
 ```bash
-$ cd Lite && ./editor
+$ cd Lite && ./lite
 ```
 
-## How to use
+## How to Use
 
-| Command                      | Function        |
-|------------------------------|-----------------|
-| Ctrl+Q                       | Exit            |
-| Ctrl+S                       | Save            |
-| ESC | Enter                  | exit mode       |
-| :arrow_left: | :arrow_up:    | search backward |
-| :arrow_right: | :arrow_down: | search forward  |
+| Command                      | Function           |
+|------------------------------|--------------------|
+| Ctrl+Q                       | Exit               |
+| Ctrl+S                       | Save               |
+| Ctrl+S + filename            | Save As            |
+| Ctrl+F                       | Incremental Search |
+| ESC                          | exit mode          |
+| :arrow_left: / :arrow_up:    | search backward    |
+| :arrow_right: / :arrow_down: | search forward     |
+
+<br/>
+<img src="assets/lite_screencast.gif" />
 
 ## Issues
 
