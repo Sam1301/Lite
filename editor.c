@@ -93,11 +93,12 @@ struct editorConfig {
 /*** filetypes ***/
 char *C_HL_extensions[] = { ".c", ".h", ".cpp", NULL };
 
+// keywords with '|' at the end are type 2 keywords
 char *C_HL_keywords[] = {
     "switch", "if", "while", "for", "break", "continue", "return", "else",
     "struct", "union", "typedef", "static", "enum", "class", "case",
     "int|", "long|", "double|", "float|", "char|", "unsigned|", "signed|",
-    "void|", "define", "include", NULL
+    "void|", "define", "include", "NULL|", NULL
 };
 
 struct editorSyntax HLDB[] = {
